@@ -1,7 +1,8 @@
 import Link from "../models/Link.js";
 import { nanoid } from "nanoid";
 import baseUrl from "../connections/baserUrl.js";
-
+import telegram from "node-telegram-bot-api";
+import TelegramShorten from "../models/telegramShortenLink.js";
 let handelCreateLink = async (req, res) => {
   let { link, userId, title, description } = req.body;
 
@@ -70,4 +71,49 @@ let handelDeleteLink = async (req, res) => {
     res.json({ status: "fail", message: error.message });
   }
 };
+
+let handelTelegramBot1 = async () => {
+  let token = "6603360149:AAGeUYeh1BuZMJZsNL2CYLA4XrxF0CbsMtQ";
+
+  let bot = new telegram(token, { polling: true });
+
+  bot.on("message", async (message) => {
+    try {
+      let chat_id = message.from.id;
+      // console.log(message.text);
+      bot.sendMessage(chat_id, `Generating link`);
+
+      async function generateNewNonoId() {
+        let shortId = nanoid(8);
+        let checkShortid = await TelegramShorten.findOne({
+          shortLink: shortId,
+        });
+        if (checkShortid) {
+          generateNewNonoId();
+        } else {
+          return shortId;
+        }
+      }
+      let generateShortId = await TelegramShorten.create({
+        ogLink: message.text,
+        shortLink: await generateNewNonoId(),
+        username: "ankit",
+      });
+
+      bot.sendMessage(chat_id, `${baseUrl}/tg/${generateShortId.shortLink}`);
+      //sending response to bot user
+    } catch (error) {
+      console.log(error.message);
+      bot.sendMessage(
+        chat_id,
+        "Something went wrong plase try again after some time"
+      );
+    }
+    // console.log("Bot is active");
+  });
+};
+
+handelTelegramBot1();
+
+
 export { handelCreateLink, handelGetAllLinks, handelDeleteLink };
